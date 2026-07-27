@@ -175,10 +175,10 @@
 <div class="rows">
   <div class="row goals" id="goals">
     <button class="pill" data-g="9">9배</button>
-    <button class="pill" data-g="21">21배</button>
+    <button class="pill" data-g="27">27배</button>
     <button class="pill" data-g="54">54배</button>
+    <button class="pill" data-g="81">81배</button>
     <button class="pill active" data-g="108">108배</button>
-    <button class="pill" data-g="0">무한</button>
   </div>
   <div class="row speed" id="speeds">
     <button class="pill" data-s="16">느리게<small>16초</small></button>
@@ -326,13 +326,13 @@
   /* ───────── 염주 ───────── */
   let beads=[];
   function buildBeads(n){
-    const count = n>0 ? n : 108;
+    const count = n;
     beadWrap.innerHTML=''; beads=[];
     const R=47;
     for(let i=0;i<count;i++){
       const a=(-90 + i*360/count)*Math.PI/180;
       const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
-      const marker = count===108 && (i===27||i===54||i===81);
+      const marker = i>0 && i%(count>=54?27:9)===0;
       c.setAttribute('cx',(50+R*Math.cos(a)).toFixed(2));
       c.setAttribute('cy',(50+R*Math.sin(a)).toFixed(2));
       c.setAttribute('r', marker?1.9 : (count>60?1.05: count>30?1.5:2));
@@ -341,8 +341,7 @@
     }
   }
   function litBeads(){
-    const k = goal>0 ? done : (done % 108);
-    beads.forEach((b,i)=> b.classList.toggle('on', i<k));
+    beads.forEach((b,i)=> b.classList.toggle('on', i<done));
   }
 
   /* ───────── 소리 ───────── */
@@ -467,6 +466,11 @@
       }catch(e){}
     }, 4000);
   }
+  // 9의 배수를 우리말 수사로 — TTS가 '십팔배'처럼 읽는 것을 피한다
+  const KO_NUM={9:'아홉',18:'열여덟',27:'스물일곱',36:'서른여섯',45:'마흔다섯',54:'쉰네',
+                63:'예순세',72:'일흔두',81:'여든한',90:'아흔',99:'아흔아홉',108:'백여덟'};
+  function koCount(n){ return (KO_NUM[n]||n)+' 배'; }
+
   const diag={last:'없음'};
   function speakNow(text, useVoice){
     try{
@@ -599,16 +603,12 @@
     return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
   }
   function updateMeta(){
-    if(goal>0){
-      const remain=(goal-done)*cycleSec;
-      metaLabel.textContent = `지난 시간 ${fmt(elapsed)} · 남은 시간 약 ${fmt(remain)}`;
-    }else{
-      metaLabel.textContent = `지난 시간 ${fmt(elapsed)}`;
-    }
+    const remain=(goal-done)*cycleSec;
+    metaLabel.textContent = `지난 시간 ${fmt(elapsed)} · 남은 시간 약 ${fmt(remain)}`;
   }
   function updateCount(){
     countLabel.firstChild.nodeValue = String(done);
-    goalLabel.textContent = goal>0 ? `/ ${goal}` : '배';
+    goalLabel.textContent = `/ ${goal}`;
     litBeads();
     updateMeta();
   }
@@ -627,11 +627,12 @@
     if(PHASE_KNOCKS[i]>0) moktak(PHASE_KNOCK_VOL[i], PHASE_KNOCKS[i], durOf(i));
 
     // 9배마다 자세 팁, 그 외에는 짧은 구령
-    const milestone = (done>0 && done%9===0);
-    if(i===0 && milestone){
-      hint.textContent = TIPS[tipIdx % TIPS.length];
-      say(`${done}배. ` + TIPS[tipIdx % TIPS.length]);
+    const nine    = (done>0 && done%9===0);
+    const bigMile = (goal===108 && (done===27||done===54||done===81));
+    if(i===0 && nine){
+      hint.textContent = TIPS[tipIdx % TIPS.length];   // 팁은 화면으로만
       tipIdx++;
+      if(!bigMile) say(koCount(done));                 // 27·54·81배는 아래 안내와 겹친다
     }else{
       hint.textContent = p.hint;
       // 목탁이 울리는 단계(2)에서는 소리가 겹치지 않도록 살짝 늦춘다
@@ -651,7 +652,7 @@
     }else if(done%9===0){
       bell(880,1.2,0.09);
     }
-    if(goal>0 && done>=goal){ finish(); return true; }
+    if(done>=goal){ finish(); return true; }
     return false;
   }
 
@@ -780,7 +781,7 @@
       goal=Number(b.dataset.g);
       document.querySelectorAll('#goals .pill').forEach(x=>x.classList.toggle('active',x===b));
       buildBeads(goal);
-      if(goal>0 && done>=goal){ done=0; elapsed=0; }
+      if(done>=goal){ done=0; elapsed=0; }
       updateCount();
     });
   });
