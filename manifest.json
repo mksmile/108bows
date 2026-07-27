@@ -1,0 +1,17 @@
+{
+  "name": "백팔배 · 절운동",
+  "short_name": "백팔배",
+  "description": "108배 절운동 안내 — 자세와 호흡을 목탁과 음성으로 안내합니다",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0A1017",
+  "theme_color": "#0A1017",
+  "lang": "ko",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
