@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>백팔배 · 절운동</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --night-deep:#0A1017;
+    --night:#18202B;
+    --moon:#EDE8D8;
+    --moon-dim:#B8BFC9;
+    --gold:#D9B36C;     /* 황 — 합장 */
+    --sky:#6E9CC4;      /* 청 — 내려가기(날숨) */
+    --white:#EDE8D8;    /* 백 — 접족례(정지) */
+    --jade:#7FB8A4;     /* 옥 — 일어서기(들숨) */
+    --text:#E9E6DC;
+    --text-dim:#C0C7D2;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    font-family:'Pretendard','Noto Sans KR',-apple-system,BlinkMacSystemFont,sans-serif;
+    background:radial-gradient(ellipse at 50% 118%, var(--night) 0%, var(--night-deep) 72%);
+    color:var(--text);
+    display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+    min-height:100dvh;padding:18px 0 calc(18px + env(safe-area-inset-bottom));overflow-x:hidden;
+  }
+  header,.rows,.guide,.hint,.controls{position:relative;}
+
+  .star{position:fixed;border-radius:50%;background:var(--moon-dim);opacity:.3;
+    animation:twinkle 5s ease-in-out infinite;}
+  @keyframes twinkle{0%,100%{opacity:.12}50%{opacity:.45}}
+
+  header{text-align:center;z-index:5;}
+  header h1{font-weight:600;font-size:1.7rem;letter-spacing:.34em;text-indent:.34em;color:var(--moon-dim);}
+  header p{margin-top:9px;font-size:1.05rem;color:var(--text-dim);letter-spacing:.1em;}
+
+  /* ── 무대 ── */
+  .stage{position:relative;width:min(62vmin,410px);height:min(62vmin,410px);
+    display:flex;align-items:center;justify-content:center;z-index:2;}
+  svg.ring{position:absolute;inset:0;width:100%;height:100%;}
+  svg.ring.rot{transform:rotate(-90deg);}
+  .arc-bg{fill:none;stroke:rgba(233,230,220,.10);stroke-width:2;}
+  .arc-fg{fill:none;stroke-width:3;stroke-linecap:round;transition:stroke .9s ease;}
+
+  /* 염주 알 */
+  .bead{fill:rgba(237,232,216,.16);transition:fill .4s ease;}
+  .bead.on{fill:var(--moon);filter:drop-shadow(0 0 1.6px rgba(237,232,216,.85));}
+  .bead.marker{fill:rgba(217,179,108,.35);}
+  .bead.marker.on{fill:var(--gold);filter:drop-shadow(0 0 2.6px rgba(217,179,108,.95));}
+
+  .aura{position:absolute;width:74%;height:74%;border-radius:50%;
+    background:radial-gradient(circle, rgba(217,179,108,.16) 0%, rgba(217,179,108,.04) 55%, transparent 72%);
+    transition:background 1s ease, transform .6s ease;filter:blur(3px);}
+
+  .figure{position:relative;width:78%;z-index:3;}
+  .figure svg{width:100%;height:auto;display:block;overflow:visible;}
+  .limb{stroke:#FFFDF4;stroke-width:5;stroke-linecap:round;fill:none;}
+  .head{stroke:#FFFDF4;stroke-width:5;fill:none;}
+  .palm{fill:#FFFDF4;opacity:.9;}
+  .mat{fill:rgba(233,230,220,.07);stroke:rgba(233,230,220,.16);stroke-width:1;}
+  .floor{stroke:rgba(233,230,220,.22);stroke-width:1;}
+
+  /* ── 안내 ── */
+  .guide{display:flex;flex-direction:column;align-items:center;margin:8px 0 2px;z-index:6;text-align:center;}
+  .phase{font-weight:600;font-size:2rem;letter-spacing:.16em;text-indent:.16em;
+    transition:color .6s ease;min-height:2.7rem;}
+  .breath{font-size:1rem;letter-spacing:.24em;text-indent:.24em;color:var(--text-dim);min-height:1.4rem;margin-top:2px;}
+  .count{font-weight:700;font-size:5.2rem;line-height:1.1;color:var(--moon);
+    font-variant-numeric:tabular-nums;min-height:5.4rem;}
+  .count .goal{font-size:.34em;font-weight:500;color:var(--text-dim);letter-spacing:.06em;margin-left:.2em;}
+  .meta{font-size:1rem;color:var(--text-dim);letter-spacing:.14em;min-height:1.4rem;}
+
+  .hint{font-size:1.02rem;color:var(--text);opacity:.85;margin:6px 0 12px;padding:0 18px;
+    word-break:keep-all;max-width:34em;letter-spacing:.06em;z-index:6;text-align:center;line-height:1.7;
+    min-height:3.4rem;}
+
+  /* ── 버튼 ── */
+  .rows{display:flex;flex-direction:column;align-items:center;gap:7px;z-index:7;width:100%;}
+  .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:0 12px;}
+  .pill{
+    font-family:inherit;font-weight:500;font-size:1rem;letter-spacing:.03em;
+    color:var(--text-dim);background:transparent;
+    border:1px solid rgba(233,230,220,.22);border-radius:999px;
+    padding:8px 18px;cursor:pointer;transition:all .3s ease;line-height:1.25;
+  }
+  .pill:hover{color:var(--text);border-color:rgba(233,230,220,.5);}
+  .pill:focus-visible{outline:2px solid var(--moon);outline-offset:3px;}
+  .pill small{display:block;font-size:.76em;letter-spacing:0;opacity:.75;}
+  .pill.active{color:var(--night-deep);background:var(--moon);border-color:var(--moon);font-weight:700;}
+  .pill.active small{opacity:.85;}
+  .row.speed .pill.active{background:var(--gold);border-color:var(--gold);box-shadow:0 0 14px rgba(217,179,108,.4);}
+
+  .controls{display:flex;gap:10px;z-index:7;flex-wrap:wrap;justify-content:center;padding:0 12px;}
+  button.act{
+    font-family:inherit;font-weight:500;font-size:1.08rem;letter-spacing:.1em;text-indent:.1em;
+    display:inline-flex;align-items:center;justify-content:center;min-height:46px;
+    color:var(--text);background:rgba(233,230,220,.06);
+    border:1px solid rgba(233,230,220,.25);border-radius:24px;white-space:nowrap;
+    padding:13px 34px;cursor:pointer;transition:all .3s ease;
+  }
+  button.act:hover{background:rgba(233,230,220,.14);}
+  button.act:focus-visible{outline:2px solid var(--moon);outline-offset:3px;}
+  button.act.small{padding:13px 18px;font-size:.95rem;letter-spacing:.02em;text-indent:.02em;}
+  button.act.hidden{display:none;}
+
+  .bg-tint{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0;transition:opacity 1.6s ease;}
+  .rest-veil{position:fixed;inset:0;z-index:8;pointer-events:none;background:#050A10;opacity:0;transition:opacity 6s ease;}
+  .rest-veil.on{opacity:.5;}
+
+  header h1, header p{text-shadow:0 0 22px rgba(233,230,220,.26), 0 2px 14px rgba(0,0,0,.45);}
+  .phase{text-shadow:0 0 24px currentColor, 0 2px 16px rgba(0,0,0,.5);}
+  .count{text-shadow:0 0 26px rgba(237,232,216,.45), 0 2px 14px rgba(0,0,0,.5);}
+  .meta,.hint,.breath{text-shadow:0 1px 10px rgba(0,0,0,.5);}
+
+  @media (prefers-reduced-motion: reduce){ .star{animation:none;} }
+  @media (max-width:520px){
+    body{padding:10px 0 calc(12px + env(safe-area-inset-bottom));}
+    header h1{font-size:1.2rem;letter-spacing:.26em;text-indent:.26em;}
+    header p{font-size:.86rem;margin-top:5px;}
+    .rows{gap:5px;}
+    .row{gap:5px;padding:0 6px;flex-wrap:nowrap;}
+    .pill{padding:6px 10px;font-size:.8rem;}
+    .pill small{font-size:.7em;}
+    .stage{width:min(56vmin,330px);height:min(56vmin,330px);}
+    .guide{margin:4px 0 0;}
+    .phase{font-size:1.35rem;min-height:1.9rem;letter-spacing:.1em;text-indent:.1em;}
+    .breath{font-size:.82rem;min-height:1.1rem;}
+    .count{font-size:3.4rem;min-height:3.6rem;}
+    .meta{font-size:.85rem;}
+    .hint{font-size:.86rem;margin:4px 0 10px;padding:0 14px;line-height:1.55;min-height:2.8rem;}
+    .controls{gap:7px;}
+    button.act{padding:11px 22px;font-size:.92rem;min-height:44px;}
+    button.act.small{padding:11px 14px;font-size:.82rem;}
+  }
+</style>
+</head>
+<body>
+<div class="bg-tint" id="tintA"></div>
+<div class="bg-tint" id="tintB"></div>
+<div class="rest-veil" id="restVeil"></div>
+
+<header>
+  <h1>백 팔 배</h1>
+  <p id="subtitle">오체투지 — 두 무릎 · 두 팔꿈치 · 이마를 땅에</p>
+</header>
+
+<div class="rows">
+  <div class="row goals" id="goals">
+    <button class="pill" data-g="9">9배</button>
+    <button class="pill" data-g="21">21배</button>
+    <button class="pill" data-g="54">54배</button>
+    <button class="pill active" data-g="108">108배</button>
+    <button class="pill" data-g="0">무한</button>
+  </div>
+  <div class="row speed" id="speeds">
+    <button class="pill" data-s="16">느리게<small>16초</small></button>
+    <button class="pill active" data-s="14">보통<small>14초</small></button>
+    <button class="pill" data-s="12">빠르게<small>12초</small></button>
+    <button class="pill" data-s="10">수행<small>10초</small></button>
+  </div>
+</div>
+
+<div class="stage">
+  <!-- 108 염주 -->
+  <svg class="ring" viewBox="0 0 100 100"><g id="beadWrap"></g></svg>
+  <!-- 현재 한 배의 진행 -->
+  <svg class="ring rot" viewBox="0 0 100 100">
+    <circle class="arc-bg" cx="50" cy="50" r="41"/>
+    <circle class="arc-fg" id="arcFg" cx="50" cy="50" r="41"
+      stroke="#D9B36C" stroke-dasharray="257.6" stroke-dashoffset="257.6"/>
+  </svg>
+  <div class="aura" id="aura"></div>
+
+  <!-- 절하는 사람 (관절 보간 선화) -->
+  <div class="figure">
+    <svg viewBox="0 0 220 214" xmlns="http://www.w3.org/2000/svg">
+      <rect class="mat" x="26" y="188" width="168" height="9" rx="4.5"/>
+      <line class="floor" x1="14" y1="197.5" x2="206" y2="197.5"/>
+      <ellipse id="shadow" cx="100" cy="199" rx="26" ry="3.4" fill="#7FB8A4" opacity=".2"/>
+      <line class="limb" id="lThigh"/>
+      <line class="limb" id="lShin"/>
+      <line class="limb" id="lFoot"/>
+      <line class="limb" id="lSpine"/>
+      <line class="limb" id="lNeck"/>
+      <line class="limb" id="lUpArm"/>
+      <line class="limb" id="lForeArm"/>
+      <circle class="head" id="cHead" r="11.5"/>
+      <circle class="palm" id="cHand" r="4"/>
+    </svg>
+  </div>
+</div>
+
+<div class="guide">
+  <div class="phase" id="phaseLabel">준비되면 시작하세요</div>
+  <div class="breath" id="breathLabel"></div>
+  <div class="count" id="countLabel">0<span class="goal" id="goalLabel">/ 108</span></div>
+  <div class="meta" id="metaLabel"></div>
+</div>
+
+<div class="hint" id="hint">두꺼운 방석을 무릎 아래에 두고, 미끄럽지 않은 바닥에 섭니다</div>
+
+<div class="controls">
+  <button class="act" id="startBtn">시 작</button>
+  <button class="act small hidden" id="resetBtn">처음부터</button>
+  <button class="act small" id="soundBtn" aria-pressed="true">🔔 구령</button>
+  <button class="act small" id="fsBtn">⛶ 전체화면</button>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ───────── 자세 정의 (관절 좌표) ───────── */
+  const POSES = {
+    STAND: { // 합장하고 선 자세
+      head:[100,42], shoulder:[100,58], hip:[100,104], knee:[98,146],
+      ankle:[96,192], toe:[112,196], elbow:[112,84], hand:[103,66]
+    },
+    KNEEL: { // 무릎 꿇고 발뒤꿈치 위에 앉은 자세
+      head:[80,112], shoulder:[78,129], hip:[74,174], knee:[113,188],
+      ankle:[67,194], toe:[52,196], elbow:[92,152], hand:[83,136]
+    },
+    PROSTRATE: { // 이마를 바닥에 댄 자세
+      head:[136,185], shoulder:[118,181], hip:[74,174], knee:[113,188],
+      ankle:[67,194], toe:[52,196], elbow:[137,194], hand:[155,194]
+    },
+    PALMS: { // 접족례 — 손바닥을 뒤집어 귀 높이로 받듦
+      head:[136,185], shoulder:[118,181], hip:[74,174], knee:[113,188],
+      ankle:[67,194], toe:[52,196], elbow:[138,193], hand:[153,178]
+    }
+  };
+
+  const PHASES = [
+    // 보통(14초) 기준 배분 — 합장 2.4 · 내려가기 3.9 · 받들고 4.0 · 일어서기 3.7
+    { name:'합 장',        breath:'들이마시며',   ratio:.171, color:'var(--gold)',  ring:'#D9B36C',
+      seq:['STAND'], cue:'합장',
+      hint:'발은 모으고 손끝은 턱 높이 — 어깨의 힘을 뺍니다' },
+    { name:'내려갑니다',    breath:'내쉬며',       ratio:.279, color:'var(--sky)',   ring:'#6E9CC4',
+      seq:['STAND','KNEEL','PROSTRATE'], cue:'내쉬며',
+      hint:'허리보다 무릎을 먼저 굽혀, 손으로 바닥을 짚으며 낮춥니다' },
+    { name:'이마를 댑니다',  breath:'멈추고',       ratio:.286, color:'var(--white)', ring:'#EDE8D8',
+      seq:['PROSTRATE','PALMS','PROSTRATE'], cue:'받들고',
+      hint:'이마를 가만히 내려놓고, 손바닥을 뒤집어 귀 높이로 받듭니다' },
+    { name:'일어섭니다',    breath:'들이마시며',   ratio:.264, color:'var(--jade)',  ring:'#7FB8A4',
+      seq:['PROSTRATE','KNEEL','STAND'], cue:'들이마시며',
+      hint:'반동 대신 허벅지와 엉덩이 힘으로 밀어 올립니다' }
+  ];
+
+  const TIPS = [
+    '숨을 참지 마세요. 호흡이 흐트러지면 속도를 늦춥니다',
+    '시선은 바닥에 두고, 목은 척추의 연장선을 유지합니다',
+    '무릎이 발끝을 크게 넘지 않도록 엉덩이를 뒤로 뺍니다',
+    '손은 어깨너비로, 손가락을 펴서 손목 부담을 줄입니다',
+    '어깨에 힘이 들어가면 승모근이 뭉칩니다. 내려주세요',
+    '이마를 세게 부딪히지 말고 가만히 내려놓습니다',
+    '발등을 펴서 붙이거나, 발가락을 세워도 좋습니다',
+    '무릎 관절에 통증이 오면 멈추세요. 근육통과 다릅니다',
+    '들숨은 코로, 날숨은 입 또는 코로 길게 내보냅니다',
+    '숫자보다 호흡이 먼저입니다. 리듬을 지켜주세요',
+    '허리를 젖히지 말고, 배에 힘을 준 채로 일어섭니다',
+    '물은 절이 끝난 뒤 천천히 나누어 마십니다'
+  ];
+
+  /* ───────── 요소 ───────── */
+  const $ = id => document.getElementById(id);
+  const beadWrap=$('beadWrap'), arc=$('arcFg'), aura=$('aura'),
+        phaseLabel=$('phaseLabel'), breathLabel=$('breathLabel'),
+        countLabel=$('countLabel'), goalLabel=$('goalLabel'), metaLabel=$('metaLabel'),
+        hint=$('hint'), startBtn=$('startBtn'), resetBtn=$('resetBtn'),
+        soundBtn=$('soundBtn'), fsBtn=$('fsBtn'),
+        tintA=$('tintA'), tintB=$('tintB'), restVeil=$('restVeil'),
+        shadow=$('shadow');
+  const SEG = {
+    thigh:$('lThigh'), shin:$('lShin'), foot:$('lFoot'), spine:$('lSpine'),
+    neck:$('lNeck'), upArm:$('lUpArm'), foreArm:$('lForeArm')
+  };
+  const cHead=$('cHead'), cHand=$('cHand');
+
+  const ARC = 257.6;
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let goal=108, cycleSec=14, done=0, running=false, prepTimer=null,
+      phaseIdx=0, phaseStart=0, raf=null, startedAt=0, elapsed=0,
+      soundMode='voice',           // voice | moktak | mute
+      audioCtx=null, wakeLock=null, tintFlip=false, tipIdx=0, spokenKey='';
+
+  /* ───────── 별 ───────── */
+  for(let i=0;i<24;i++){
+    const s=document.createElement('div'); s.className='star';
+    const size=Math.random()*2+1;
+    s.style.width=s.style.height=size+'px';
+    s.style.left=Math.random()*100+'vw';
+    s.style.top=Math.random()*50+'vh';
+    s.style.animationDelay=(Math.random()*5)+'s';
+    document.body.appendChild(s);
+  }
+
+  /* ───────── 염주 ───────── */
+  let beads=[];
+  function buildBeads(n){
+    const count = n>0 ? n : 108;
+    beadWrap.innerHTML=''; beads=[];
+    const R=47;
+    for(let i=0;i<count;i++){
+      const a=(-90 + i*360/count)*Math.PI/180;
+      const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      const marker = count===108 && (i===27||i===54||i===81);
+      c.setAttribute('cx',(50+R*Math.cos(a)).toFixed(2));
+      c.setAttribute('cy',(50+R*Math.sin(a)).toFixed(2));
+      c.setAttribute('r', marker?1.9 : (count>60?1.05: count>30?1.5:2));
+      c.setAttribute('class','bead'+(marker?' marker':''));
+      beadWrap.appendChild(c); beads.push(c);
+    }
+  }
+  function litBeads(){
+    const k = goal>0 ? done : (done % 108);
+    beads.forEach((b,i)=> b.classList.toggle('on', i<k));
+  }
+
+  /* ───────── 소리 ───────── */
+  let master=null;
+  function ensureAudio(){
+    try{
+      if(!audioCtx){
+        audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+        master = audioCtx.createGain();
+        master.gain.value = 1;
+        // 배음이 동시에 울릴 때 찌그러지지 않도록
+        const comp = audioCtx.createDynamicsCompressor();
+        comp.threshold.value=0;  comp.knee.value=3; comp.ratio.value=3;
+        comp.attack.value=0.004; comp.release.value=0.28;
+        master.connect(comp); comp.connect(audioCtx.destination);
+      }
+      if(audioCtx.state!=='running') audioCtx.resume();
+    }catch(e){ audioCtx=null; master=null; }
+    return !!master;
+  }
+  // 첫 터치/클릭/키 입력에서 오디오를 미리 열어둔다 (모바일 자동재생 정책)
+  ['pointerdown','touchstart','keydown'].forEach(ev=>
+    document.addEventListener(ev, ()=>ensureAudio(), {once:true, passive:true}));
+
+  /* 목탁 — 짧고 마른 신호음 (준비 알림과 같은 소리) */
+  const KNOCK_HZ    = 560;    // 소리 높낮이. 더 낮추려면 480, 높이려면 680
+  const KNOCK_DUR   = 0.12;   // 한 번 울리는 길이(초)
+  const KNOCK_GAIN  = 0.90;   // 목탁 기본 음량 (거의 최대)
+  const KNOCK_GAP   = 0.60;   // 연타 간격(초)
+  // 단계별 목탁 횟수 — 합장 · 내쉬며 · 받들고 · 들이마시며
+  const PHASE_KNOCKS = [3, 1, 2, 1];
+  const PHASE_KNOCK_VOL = [1, 0.75, 0.75, 0.75];
+  const KNOCK_SPREAD = false; // true로 두면 연타를 단계 전체에 고르게 퍼뜨린다
+  function knock(v, offset){
+    if(soundMode==='mute') return;
+    if(!ensureAudio()) return;
+    try{
+      const t0=audioCtx.currentTime+0.02+(offset||0);
+      const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+      o.type='sine'; o.frequency.value=KNOCK_HZ;
+      g.gain.setValueAtTime(0.0001,t0);
+      g.gain.exponentialRampToValueAtTime(v,t0+0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001,t0+KNOCK_DUR);
+      o.connect(g); g.connect(master);
+      o.start(t0); o.stop(t0+KNOCK_DUR+0.03);
+    }catch(e){}
+  }
+  // times>1이면 오디오 시계에 맞춰 정확한 간격으로 연타한다.
+  // phaseDur를 주면 연타가 그 단계를 넘어가지 않도록 간격을 자동으로 줄인다.
+  function moktak(vol, times, phaseDur){
+    const n=times||1, v=KNOCK_GAIN*(vol||1);
+    let gap=KNOCK_GAP;
+    if(n>1 && phaseDur){
+      const room=(phaseDur-KNOCK_DUR-0.10)/(n-1);
+      gap = KNOCK_SPREAD ? room : Math.min(KNOCK_GAP, room);
+      if(gap<0.08) gap=0.08;
+    }
+    for(let i=0;i<n;i++) knock(v, i*gap);
+  }
+  function click(){ knock(0.55); }   // 준비 카운트다운
+  function bell(base, dur, vol){
+    if(soundMode==='mute') return;
+    if(!ensureAudio()) return;
+    [1,2.01,2.98].forEach((m,i)=>{
+      try{
+        const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+        const t0=audioCtx.currentTime+0.02, D=dur||2.4;
+        o.type='sine'; o.frequency.value=base*m;
+        g.gain.setValueAtTime(0.0001,t0);
+        g.gain.exponentialRampToValueAtTime((vol||0.16)/(i+1.4),t0+0.03);
+        g.gain.exponentialRampToValueAtTime(0.0001,t0+D);
+        o.connect(g); g.connect(master);
+        o.start(t0); o.stop(t0+D+0.1);
+      }catch(e){}
+    });
+  }
+  function finishBell(){
+    if(soundMode==='mute') return;
+    if(!ensureAudio()) return;
+    [523.25,440,349.23].forEach((f,i)=>{
+      try{
+        const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+        const t0=audioCtx.currentTime+0.02+i*0.7;
+        o.type='sine'; o.frequency.value=f;
+        g.gain.setValueAtTime(0.0001,t0);
+        g.gain.exponentialRampToValueAtTime(0.2,t0+0.04);
+        g.gain.exponentialRampToValueAtTime(0.0001,t0+2.4);
+        o.connect(g); g.connect(master);
+        o.start(t0); o.stop(t0+2.5);
+      }catch(e){}
+    });
+  }
+
+  /* ───────── 음성 구령 ───────── */
+  let koVoice=null;
+  const VOICE_RATE=1.05, VOICE_PITCH=1.00, VOICE_VOL=0.50;  // 속도·음높이 기본, 음량만 낮춤
+  function pickVoice(){
+    try{
+      const vs=speechSynthesis.getVoices().filter(v=>/^ko/i.test(v.lang));
+      if(!vs.length){ koVoice=null; return; }
+      // 여성·신경망 음성을 우선한다 (SunHi·Heami·Yuna·Google 한국의 등)
+      const score=v=>{
+        const n=v.name||''; let sc=0;
+        if(/natural|neural/i.test(n))            sc+=6;
+        if(/sunhi|heami|yuna|선히|해미|유나/i.test(n)) sc+=5;
+        if(/female|여성/i.test(n))                sc+=4;
+        if(/google/i.test(n))                     sc+=2;
+        if(v.localService)                        sc+=1;
+        if(/male/i.test(n) && !/female/i.test(n)) sc-=10;
+        if(/injoon|인준/i.test(n))                sc-=10;
+        return sc;
+      };
+      koVoice = vs.slice().sort((a,b)=>score(b)-score(a))[0];
+    }catch(e){}
+  }
+  if('speechSynthesis' in window){
+    pickVoice();
+    speechSynthesis.onvoiceschanged = pickVoice;
+  }
+  function say(text, force, delay){
+    if(soundMode!=='voice' && !force) return;
+    if(!('speechSynthesis' in window)) return;
+    if(delay){ setTimeout(()=>say(text, force), delay); return; }
+    try{
+      // 말하는 도중에 자르면 소리가 뚝 끊겨 거칠게 들린다.
+      // 중요한 안내(force)만 끼어들고, 평범한 구령은 조용히 건너뛴다.
+      if(force) speechSynthesis.cancel();
+      else if(speechSynthesis.speaking || speechSynthesis.pending) return;
+      const u=new SpeechSynthesisUtterance(text);
+      u.lang='ko-KR'; if(koVoice) u.voice=koVoice;
+      u.rate=VOICE_RATE; u.pitch=VOICE_PITCH; u.volume=VOICE_VOL;
+      speechSynthesis.speak(u);
+    }catch(e){}
+  }
+
+  /* ───────── 배경 틴트 ───────── */
+  function setTint(color){
+    const inc = tintFlip?tintA:tintB, out = tintFlip?tintB:tintA;
+    tintFlip=!tintFlip;
+    inc.style.background=`radial-gradient(ellipse at 50% 66%, ${color}26 0%, ${color}10 44%, transparent 74%)`;
+    inc.style.opacity='1'; out.style.opacity='0';
+  }
+  function clearTint(){ tintA.style.opacity='0'; tintB.style.opacity='0'; }
+
+  /* ───────── 인물 그리기 ───────── */
+  function lerp(a,b,t){ return a+(b-a)*t; }
+  function lerpPose(A,B,t){
+    const o={};
+    for(const k in A) o[k]=[lerp(A[k][0],B[k][0],t), lerp(A[k][1],B[k][1],t)];
+    return o;
+  }
+  function poseAt(seq,t){
+    if(seq.length===1) return POSES[seq[0]];
+    const s=Math.min(t,0.99999)*(seq.length-1);
+    const i=Math.floor(s);
+    return lerpPose(POSES[seq[i]],POSES[seq[i+1]],s-i);
+  }
+  function line(el,a,b){
+    el.setAttribute('x1',a[0].toFixed(1)); el.setAttribute('y1',a[1].toFixed(1));
+    el.setAttribute('x2',b[0].toFixed(1)); el.setAttribute('y2',b[1].toFixed(1));
+  }
+  function draw(p){
+    line(SEG.thigh,p.hip,p.knee);
+    line(SEG.shin,p.knee,p.ankle);
+    line(SEG.foot,p.ankle,p.toe);
+    line(SEG.spine,p.hip,p.shoulder);
+    line(SEG.neck,p.shoulder,p.head);
+    line(SEG.upArm,p.shoulder,p.elbow);
+    line(SEG.foreArm,p.elbow,p.hand);
+    cHead.setAttribute('cx',p.head[0].toFixed(1)); cHead.setAttribute('cy',p.head[1].toFixed(1));
+    cHand.setAttribute('cx',p.hand[0].toFixed(1)); cHand.setAttribute('cy',p.hand[1].toFixed(1));
+    shadow.setAttribute('cx',((p.hip[0]+p.head[0])/2).toFixed(1));
+    shadow.setAttribute('rx',(22+(p.head[0]-p.hip[0])*0.28).toFixed(1));
+  }
+
+  /* ───────── 진행 ───────── */
+  const ease = t => t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+  function durOf(i){ return cycleSec*PHASES[i].ratio; }
+  function fmt(s){
+    s=Math.max(0,Math.round(s));
+    return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+  }
+  function updateMeta(){
+    if(goal>0){
+      const remain=(goal-done)*cycleSec;
+      metaLabel.textContent = `지난 시간 ${fmt(elapsed)} · 남은 시간 약 ${fmt(remain)}`;
+    }else{
+      metaLabel.textContent = `지난 시간 ${fmt(elapsed)}`;
+    }
+  }
+  function updateCount(){
+    countLabel.firstChild.nodeValue = String(done);
+    goalLabel.textContent = goal>0 ? `/ ${goal}` : '배';
+    litBeads();
+    updateMeta();
+  }
+
+  function enterPhase(i){
+    phaseIdx=i; phaseStart=performance.now();
+    const p=PHASES[i];
+    phaseLabel.textContent=p.name;
+    phaseLabel.style.color=p.color;
+    breathLabel.textContent=p.breath;
+    arc.setAttribute('stroke',p.ring);
+    aura.style.background=`radial-gradient(circle, ${p.ring}2E 0%, ${p.ring}0A 55%, transparent 72%)`;
+    setTint(p.ring);
+
+    // 소리: 단계마다 정해진 횟수만큼 목탁
+    if(PHASE_KNOCKS[i]>0) moktak(PHASE_KNOCK_VOL[i], PHASE_KNOCKS[i], durOf(i));
+
+    // 9배마다 자세 팁, 그 외에는 짧은 구령
+    const milestone = (done>0 && done%9===0);
+    if(i===0 && milestone){
+      hint.textContent = TIPS[tipIdx % TIPS.length];
+      say(`${done}배. ` + TIPS[tipIdx % TIPS.length]);
+      tipIdx++;
+    }else{
+      hint.textContent = p.hint;
+      // 목탁이 울리는 단계(2)에서는 소리가 겹치지 않도록 살짝 늦춘다
+      if(i===1||i===3) say(p.cue);
+      else if(i===2)   say(p.cue, false, 280);
+    }
+  }
+
+  function completeBow(){
+    done++;
+    updateCount();
+    if(goal===108 && (done===27||done===54||done===81)){
+      bell(700,2.6,0.16);
+      say(done===27?'스물일곱 배, 사분의 일을 지났습니다'
+        : done===54?'쉰네 배, 절반입니다'
+        : '여든한 배, 이제 스물일곱 배 남았습니다', true);
+    }else if(done%9===0){
+      bell(880,1.2,0.09);
+    }
+    if(goal>0 && done>=goal){ finish(); return true; }
+    return false;
+  }
+
+  function tick(now){
+    if(!running) return;
+    const p=PHASES[phaseIdx], dur=durOf(phaseIdx);
+    const t=(now-phaseStart)/1000;
+    elapsed = (now-startedAt)/1000;
+
+    if(t>=dur){
+      const next=(phaseIdx+1)%4;
+      if(next===0){ if(completeBow()) return; }
+      enterPhase(next);
+      raf=requestAnimationFrame(tick);
+      return;
+    }
+    const prog=Math.min(t/dur,1);
+    // 전체 한 배 중 현재 위치
+    let acc=0; for(let i=0;i<phaseIdx;i++) acc+=PHASES[i].ratio;
+    const bowProg = acc + PHASES[phaseIdx].ratio*prog;
+    arc.setAttribute('stroke-dashoffset', String(ARC*(1-bowProg)));
+
+    const e = (phaseIdx===2) ? prog : ease(prog);
+    draw(poseAt(p.seq, e));
+    if(!reduced) aura.style.transform = `scale(${0.9 + 0.16*(phaseIdx===0?0.2:1-Math.abs(0.5-bowProg)*1.2)})`;
+
+    if(Math.floor(elapsed)!==Math.floor((now-startedAt-16)/1000)) updateMeta();
+    raf=requestAnimationFrame(tick);
+  }
+
+  /* ───────── 시작 · 정지 ───────── */
+  function start(){
+    restVeil.classList.remove('on');
+    ensureAudio();
+    acquireWakeLock();
+    running=true;
+    startBtn.textContent='멈 춤';
+    resetBtn.classList.add('hidden');
+    prepare();
+  }
+  function prepare(){
+    let left=5;
+    phaseLabel.textContent='자세를 잡습니다';
+    phaseLabel.style.color='var(--moon-dim)';
+    breathLabel.textContent='';
+    hint.textContent='방석 위에 서서 두 손을 가슴 앞에 모읍니다';
+    draw(POSES.STAND);
+    clearTint();
+    arc.setAttribute('stroke-dashoffset', String(ARC));
+    say(done>0 ? `${done}배부터 이어서 시작합니다` : '준비하세요', true);
+    metaLabel.textContent = `${left}초 후 시작`;
+    moktak(0.8);
+    prepTimer=setInterval(()=>{
+      left--;
+      if(left>0){ metaLabel.textContent=`${left}초 후 시작`; click(); }
+      else{
+        clearInterval(prepTimer); prepTimer=null;
+        if(!running) return;
+        begin();
+      }
+    },1000);
+  }
+  function begin(){
+    bell(523.25,2.0,0.15);
+    startedAt = performance.now() - elapsed*1000;
+    enterPhase(0);
+    updateMeta();
+    raf=requestAnimationFrame(tick);
+  }
+  function stop(msg){
+    running=false;
+    cancelAnimationFrame(raf);
+    if(prepTimer){ clearInterval(prepTimer); prepTimer=null; }
+    try{ speechSynthesis.cancel(); }catch(e){}
+    releaseWakeLock();
+    startBtn.textContent = done>0 ? '이 어 서' : '시 작';
+    resetBtn.classList.toggle('hidden', done===0);
+    phaseLabel.textContent = msg || '잠시 쉬어갑니다';
+    phaseLabel.style.color='var(--moon-dim)';
+    breathLabel.textContent='';
+    hint.textContent = msg ? '무릎을 펴고 종아리를 가볍게 풀어주세요' : '숨이 고르게 돌아오면 이어서 하세요';
+    draw(POSES.STAND);
+    clearTint();
+    arc.setAttribute('stroke-dashoffset', String(ARC));
+    updateMeta();
+  }
+  function finish(){
+    finishBell();
+    say(`${done}배를 마쳤습니다. 천천히 호흡을 고르세요`, true);
+    stop('마쳤습니다 🙏');
+    startBtn.textContent='시 작';
+    metaLabel.textContent=`${done}배 · ${fmt(elapsed)} 소요`;
+    if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+    restVeil.classList.add('on');
+    done=0; elapsed=0;
+    resetBtn.classList.add('hidden');
+  }
+  function reset(){
+    done=0; elapsed=0; tipIdx=0;
+    updateCount();
+    stop();
+    startBtn.textContent='시 작';
+    resetBtn.classList.add('hidden');
+    phaseLabel.textContent='준비되면 시작하세요';
+    hint.textContent='두꺼운 방석을 무릎 아래에 두고, 미끄럽지 않은 바닥에 섭니다';
+  }
+
+  /* ───────── 화면 꺼짐 방지 ───────── */
+  async function acquireWakeLock(){
+    try{ if('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); }
+    catch(e){ wakeLock=null; }
+  }
+  function releaseWakeLock(){
+    try{ if(wakeLock){ wakeLock.release(); wakeLock=null; } }catch(e){}
+  }
+  document.addEventListener('visibilitychange', ()=>{
+    if(running && document.visibilityState==='visible'){ acquireWakeLock(); ensureAudio(); }
+  });
+
+  /* ───────── 컨트롤 ───────── */
+  startBtn.addEventListener('click', ()=> running?stop():start());
+  resetBtn.addEventListener('click', reset);
+
+  document.querySelectorAll('#goals .pill').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      goal=Number(b.dataset.g);
+      document.querySelectorAll('#goals .pill').forEach(x=>x.classList.toggle('active',x===b));
+      buildBeads(goal);
+      if(goal>0 && done>=goal){ done=0; elapsed=0; }
+      updateCount();
+    });
+  });
+  document.querySelectorAll('#speeds .pill').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      cycleSec=Number(b.dataset.s);
+      document.querySelectorAll('#speeds .pill').forEach(x=>x.classList.toggle('active',x===b));
+      updateMeta();
+    });
+  });
+
+  const MODES=[
+    {key:'voice',  label:'🔔 구령'},
+    {key:'moktak', label:'🪘 목탁'},
+    {key:'mute',   label:'🔇 무음'}
+  ];
+  soundBtn.addEventListener('click', ()=>{
+    const i=MODES.findIndex(m=>m.key===soundMode);
+    const n=MODES[(i+1)%MODES.length];
+    soundMode=n.key; soundBtn.textContent=n.label;
+    soundBtn.setAttribute('aria-pressed', String(soundMode!=='mute'));
+    if(soundMode!=='mute'){ ensureAudio(); moktak(1); }
+    else { try{ speechSynthesis.cancel(); }catch(e){} }
+    if(soundMode==='voice') say('구령을 켰습니다', true);
+  });
+
+  fsBtn.addEventListener('click', ()=>{
+    if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+    else document.exitFullscreen().catch(()=>{});
+  });
+  document.addEventListener('fullscreenchange', ()=>{
+    fsBtn.textContent = document.fullscreenElement ? '⛶ 축소' : '⛶ 전체화면';
+  });
+  document.addEventListener('keydown', e=>{
+    if(e.code==='Space'){ e.preventDefault(); running?stop():start(); }
+  });
+
+  /* ───────── 초기화 ───────── */
+  buildBeads(goal);
+  updateCount();
+  draw(POSES.STAND);
+})();
+</script>
+</body>
+</html>
