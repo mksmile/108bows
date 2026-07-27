@@ -116,6 +116,13 @@
   button.act.small{padding:13px 18px;font-size:.95rem;letter-spacing:.02em;text-indent:.02em;}
   button.act.hidden{display:none;}
 
+  .banner{display:none;position:fixed;top:0;left:0;right:0;z-index:100;
+    background:#D9B36C;color:#0A1017;padding:10px 12px calc(10px + env(safe-area-inset-top));
+    font-size:.84rem;line-height:1.5;text-align:center;font-weight:500;}
+  .banner .row2{margin-top:7px;display:flex;gap:7px;justify-content:center;}
+  .banner a,.banner button{font-family:inherit;font-size:.82rem;font-weight:700;
+    background:#0A1017;color:#EDE8D8;border:0;border-radius:999px;
+    padding:7px 15px;text-decoration:none;cursor:pointer;}
   .diagbox{display:none;position:fixed;left:8px;right:8px;bottom:8px;z-index:99;
     background:rgba(8,13,20,.96);border:1px solid rgba(233,230,220,.3);border-radius:12px;
     padding:12px 14px;font-size:.78rem;line-height:1.65;color:var(--text);
@@ -157,6 +164,7 @@
 <div class="bg-tint" id="tintA"></div>
 <div class="bg-tint" id="tintB"></div>
 <div class="rest-veil" id="restVeil"></div>
+<div class="banner" id="banner"></div>
 <div class="diagbox" id="diagBox"></div>
 
 <header>
@@ -288,7 +296,7 @@
         countLabel=$('countLabel'), goalLabel=$('goalLabel'), metaLabel=$('metaLabel'),
         hint=$('hint'), startBtn=$('startBtn'), resetBtn=$('resetBtn'),
         soundBtn=$('soundBtn'), fsBtn=$('fsBtn'),
-        tintA=$('tintA'), tintB=$('tintB'), restVeil=$('restVeil'), diagBox=$('diagBox'),
+        tintA=$('tintA'), tintB=$('tintB'), restVeil=$('restVeil'), diagBox=$('diagBox'), banner=$('banner'),
         shadow=$('shadow');
   const SEG = {
     thigh:$('lThigh'), shin:$('lShin'), foot:$('lFoot'), spine:$('lSpine'),
@@ -506,7 +514,7 @@
     const mode=window.matchMedia('(display-mode: standalone)').matches?'홈 화면 앱(standalone)':'브라우저';
     diagBox.innerHTML='<b>음성 진단</b><span id="diagClose">✕</span><br>'+
       '실행 형태: '+mode+'<br>'+
-      'speechSynthesis: '+(has?'지원함':'없음')+'<br>'+
+      'speechSynthesis: '+(has?'지원함':'<b>없음 — 앱 내장 브라우저입니다. 크롬에서 여세요</b>')+'<br>'+
       '음성 전체 '+vs.length+'개 / 한국어 '+ko.length+'개<br>'+
       (ko.length? ko.map(v=>'· '+v.name+(v.localService?' <b>[기기]</b>':' [네트워크]')).join('<br>')
                 : '· 한국어 음성 없음')+'<br>'+
@@ -516,6 +524,32 @@
     document.getElementById('diagClose').onclick=()=>{ diagBox.style.display='none'; };
   }
   if(location.hash==='#debug') setTimeout(showDiag,600);
+
+  /* 앱 내장 브라우저(WebView)는 음성 합성을 제공하지 않는다.
+     네이버·카카오톡·인스타그램 등에서 열면 구령이 통째로 빠진다. */
+  const UA=navigator.userAgent||'';
+  const INAPP=/NAVER\(inapp|KAKAOTALK|Instagram|FBAN|FBAV|Line\/|DaumApps|everytimeApp|; wv\)/i.test(UA);
+  const NO_TTS=!('speechSynthesis' in window);
+  function showBanner(){
+    const bare=location.href.replace(/^https?:\/\//,'').replace(/#.*$/,'');
+    const isAndroid=/Android/i.test(UA);
+    const intentUrl='intent://'+bare+'#Intent;scheme=https;package=com.android.chrome;end';
+    banner.innerHTML=
+      '이 브라우저는 음성 안내를 지원하지 않습니다. 크롬에서 열면 구령이 나옵니다.'+
+      '<div class="row2">'+
+        (isAndroid?'<a id="openChrome" href="'+intentUrl+'">크롬으로 열기</a>':'')+
+        '<button id="copyUrl">주소 복사</button>'+
+        '<button id="closeBanner">닫기</button>'+
+      '</div>';
+    banner.style.display='block';
+    document.getElementById('closeBanner').onclick=()=>{ banner.style.display='none'; };
+    document.getElementById('copyUrl').onclick=async ()=>{
+      try{ await navigator.clipboard.writeText(location.origin+location.pathname);
+           document.getElementById('copyUrl').textContent='복사됨'; }
+      catch(e){ document.getElementById('copyUrl').textContent='복사 실패'; }
+    };
+  }
+  if(NO_TTS || INAPP) setTimeout(showBanner,500);
 
   /* ───────── 배경 틴트 ───────── */
   function setTint(color){
@@ -782,7 +816,8 @@
     else { try{ speechSynthesis.cancel(); }catch(e){} }
     if(soundMode==='voice'){
       say('구령을 켰습니다', true);
-      setTimeout(()=>{ if(!voiceOK){
+      if(NO_TTS){ showBanner(); }
+      else setTimeout(()=>{ if(!voiceOK){
         hint.textContent='음성이 시작되지 않았습니다 — 구령 버튼을 길게 누르면 진단이 나옵니다';
         showDiag();
       } }, 5000);
