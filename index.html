@@ -422,20 +422,19 @@
   }
 
   /* ───────── 음성 구령 ───────── */
-  let koVoice=null;
+  let koVoice=null, speakUntil=0, voiceFailed=false, voiceOK=false;
   const VOICE_RATE=1.05, VOICE_PITCH=1.00, VOICE_VOL=0.50;  // 속도·음높이 기본, 음량만 낮춤
   function pickVoice(){
     try{
       const vs=speechSynthesis.getVoices().filter(v=>/^ko/i.test(v.lang));
       if(!vs.length){ koVoice=null; return; }
-      // 여성·신경망 음성을 우선한다 (SunHi·Heami·Yuna·Google 한국의 등)
+      // 기기에 설치된(local) 음성을 최우선. 클라우드 음성은 소리 없이 실패하는 일이 있다.
       const score=v=>{
         const n=v.name||''; let sc=0;
-        if(/natural|neural/i.test(n))            sc+=6;
-        if(/sunhi|heami|yuna|선히|해미|유나/i.test(n)) sc+=5;
-        if(/female|여성/i.test(n))                sc+=4;
-        if(/google/i.test(n))                     sc+=2;
-        if(v.localService)                        sc+=1;
+        if(v.localService)                        sc+=6;
+        if(/sunhi|heami|yuna|선히|해미|유나/i.test(n)) sc+=4;
+        if(/female|여성/i.test(n))                sc+=3;
+        if(/natural|neural/i.test(n))             sc+=2;
         if(/male/i.test(n) && !/female/i.test(n)) sc-=10;
         if(/injoon|인준/i.test(n))                sc-=10;
         return sc;
@@ -446,19 +445,38 @@
   if('speechSynthesis' in window){
     pickVoice();
     speechSynthesis.onvoiceschanged = pickVoice;
+    // speaking 플래그가 true로 굳어버리는 브라우저 버그를 주기적으로 푼다
+    setInterval(()=>{
+      try{
+        if(speechSynthesis.speaking && performance.now() > speakUntil+3000) speechSynthesis.cancel();
+      }catch(e){}
+    }, 4000);
   }
   function say(text, force, delay){
     if(soundMode!=='voice' && !force) return;
     if(!('speechSynthesis' in window)) return;
     if(delay){ setTimeout(()=>say(text, force), delay); return; }
+    const now=performance.now();
+    // speechSynthesis.speaking / pending 은 취소·오류 후 true로 굳는 일이 잦다.
+    // API 상태를 믿지 말고, 직접 계산한 예상 발화 시간으로 겹침을 판단한다.
+    if(!force && now < speakUntil) return;
     try{
-      // 말하는 도중에 자르면 소리가 뚝 끊겨 거칠게 들린다.
-      // 중요한 안내(force)만 끼어들고, 평범한 구령은 조용히 건너뛴다.
-      if(force) speechSynthesis.cancel();
-      else if(speechSynthesis.speaking || speechSynthesis.pending) return;
+      speechSynthesis.cancel();   // 굳은 상태를 매번 풀어준다
       const u=new SpeechSynthesisUtterance(text);
-      u.lang='ko-KR'; if(koVoice) u.voice=koVoice;
+      u.lang='ko-KR'; if(koVoice && !voiceFailed) u.voice=koVoice;
       u.rate=VOICE_RATE; u.pitch=VOICE_PITCH; u.volume=VOICE_VOL;
+      u.onstart=()=>{ voiceOK=true; };
+      u.onerror=()=>{            // 선택한 음성이 실패하면 기본 음성으로 한 번 재시도
+        if(voiceFailed) return;
+        voiceFailed=true; koVoice=null;
+        try{
+          const u2=new SpeechSynthesisUtterance(text);
+          u2.lang='ko-KR'; u2.rate=VOICE_RATE; u2.pitch=VOICE_PITCH; u2.volume=VOICE_VOL;
+          u2.onstart=()=>{ voiceOK=true; };
+          speechSynthesis.speak(u2);
+        }catch(e){}
+      };
+      speakUntil = now + 250 + text.length*150/VOICE_RATE;   // 한글 한 글자 ≈ 150ms
       speechSynthesis.speak(u);
     }catch(e){}
   }
@@ -716,7 +734,12 @@
     soundBtn.setAttribute('aria-pressed', String(soundMode!=='mute'));
     if(soundMode!=='mute'){ ensureAudio(); moktak(1); }
     else { try{ speechSynthesis.cancel(); }catch(e){} }
-    if(soundMode==='voice') say('구령을 켰습니다', true);
+    if(soundMode==='voice'){
+      say('구령을 켰습니다', true);
+      setTimeout(()=>{ if(!voiceOK)
+        hint.textContent='이 기기에서 음성이 나오지 않습니다 — 한국어 TTS 음성이 설치되어 있는지 확인하세요';
+      }, 2000);
+    }
   });
 
   fsBtn.addEventListener('click', ()=>{
