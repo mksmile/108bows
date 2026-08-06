@@ -80,9 +80,15 @@
   .breath{font-size:1rem;letter-spacing:.24em;text-indent:.24em;color:var(--text-dim);min-height:1.4rem;margin-top:2px;}
   .count{font-weight:700;font-size:5.2rem;line-height:1.1;color:var(--moon);
     font-variant-numeric:tabular-nums;min-height:5.4rem;}
+  .count.prep{color:var(--gold);animation:prepPulse .95s ease-out;}
+  .count.prep .goal{display:none;}
+  @keyframes prepPulse{0%{transform:scale(1.35);opacity:.35}55%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:1}}
   .count .goal{font-size:.34em;font-weight:500;color:var(--text-dim);letter-spacing:.06em;margin-left:.2em;}
   .meta{font-size:1rem;color:var(--text-dim);letter-spacing:.14em;min-height:1.4rem;}
 
+  .hint.rest{color:var(--gold);font-weight:700;letter-spacing:.1em;
+    animation:restGlow 2.4s ease-in-out 2;}
+  @keyframes restGlow{0%,100%{opacity:.6}50%{opacity:1;text-shadow:0 0 20px rgba(217,179,108,.7)}}
   .hint{font-size:1.02rem;color:var(--text);opacity:.85;margin:6px 0 12px;padding:0 18px;
     word-break:keep-all;max-width:34em;letter-spacing:.06em;z-index:6;text-align:center;line-height:1.7;
     min-height:3.4rem;}
@@ -115,6 +121,11 @@
   button.act:focus-visible{outline:2px solid var(--moon);outline-offset:3px;}
   button.act.small{padding:13px 18px;font-size:.95rem;letter-spacing:.02em;text-indent:.02em;}
   button.act.hidden{display:none;}
+  button.act.reset{border-color:rgba(233,230,220,.18);color:var(--text-dim);}
+  button.act.reset:hover{background:rgba(233,230,220,.10);}
+  button.act.dim{opacity:.3;}
+  button.act.warn{background:rgba(201,138,132,.18);border-color:#C98A84;color:#F2DCD8;font-weight:700;}
+  .controls.sub{margin-top:8px;}
 
   .banner{display:none;position:fixed;top:0;left:0;right:0;z-index:100;
     background:#D9B36C;color:#0A1017;padding:10px 12px calc(10px + env(safe-area-inset-top));
@@ -229,7 +240,9 @@
 
 <div class="controls">
   <button class="act" id="startBtn">시 작</button>
-  <button class="act small hidden" id="resetBtn">처음부터</button>
+  <button class="act reset dim" id="resetBtn">↺ 처음부터</button>
+</div>
+<div class="controls sub">
   <button class="act small" id="soundBtn" aria-pressed="true">🔔 구령</button>
   <button class="act small" id="fsBtn">⛶ 전체화면</button>
 </div>
@@ -259,19 +272,20 @@
   };
 
   const PHASES = [
-    // 보통(14초) 기준 배분 — 합장 2.4 · 내려가기 3.9 · 받들고 4.0 · 일어서기 3.7
-    { name:'합 장',        breath:'들이마시며',   ratio:.171, color:'var(--gold)',  ring:'#D9B36C',
+    // 보통(14초) 기준 배분 — 합장 2.1 · 내려가기 3.9 · 받들고 3.8 · 일어서기 4.2
+    // 일어서기는 대퇴사두근·둔근이 체중을 밀어 올리는 구간이라 가장 길게 잡는다.
+    { name:'합 장',        breath:'들이마시며',   ratio:.15, color:'var(--gold)',  ring:'#D9B36C',
       seq:['STAND'], cue:'합장',
       hint:'발은 모으고 손끝은 턱 높이 — 어깨의 힘을 뺍니다' },
-    { name:'내려갑니다',    breath:'내쉬며',       ratio:.279, color:'var(--sky)',   ring:'#6E9CC4',
+    { name:'내려갑니다',    breath:'내쉬며',       ratio:.28, color:'var(--sky)',   ring:'#6E9CC4',
       seq:['STAND','KNEEL','PROSTRATE'], cue:'내쉬며',
-      hint:'허리보다 무릎을 먼저 굽혀, 손으로 바닥을 짚으며 낮춥니다' },
-    { name:'이마를 댑니다',  breath:'멈추고',       ratio:.286, color:'var(--white)', ring:'#EDE8D8',
+      hint:"무릎을 바닥에 '쿵' 소리가 나지 않게 살포시 내립니다" },
+    { name:'이마를 댑니다',  breath:'멈추고',       ratio:.27, color:'var(--white)', ring:'#EDE8D8',
       seq:['PROSTRATE','PALMS','PROSTRATE'], cue:'받들고',
       hint:'이마를 가만히 내려놓고, 손바닥을 뒤집어 귀 높이로 받듭니다' },
-    { name:'일어섭니다',    breath:'들이마시며',   ratio:.264, color:'var(--jade)',  ring:'#7FB8A4',
+    { name:'일어섭니다',    breath:'들이마시며',   ratio:.30, color:'var(--jade)',  ring:'#7FB8A4',
       seq:['PROSTRATE','KNEEL','STAND'], cue:'들이마시며',
-      hint:'반동 대신 허벅지와 엉덩이 힘으로 밀어 올립니다' }
+      hint:'반동 대신 허벅지와 엉덩이 힘으로 천천히 밀어 올립니다' }
   ];
 
   const TIPS = [
@@ -307,6 +321,7 @@
   const ARC = 257.6;
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  let restNotice=null;
   let goal=108, cycleSec=14, done=0, running=false, prepTimer=null,
       phaseIdx=0, phaseStart=0, raf=null, startedAt=0, elapsed=0,
       soundMode='voice',           // voice | moktak | mute
@@ -371,17 +386,20 @@
   const KNOCK_DUR   = 0.12;   // 한 번 울리는 길이(초)
   const KNOCK_GAIN  = 0.90;   // 목탁 기본 음량 (거의 최대)
   const KNOCK_GAP   = 0.60;   // 연타 간격(초)
+  // 단계별 음높이 — 전부 같은 음(560Hz)으로 통일.
+  // 날숨·들숨을 소리로 구분하고 싶으면 [560, 520, 560, 610] 정도로 살짝만 벌리면 된다.
+  const PHASE_KNOCK_HZ = [560, 560, 560, 560];
   // 단계별 목탁 횟수 — 합장 · 내쉬며 · 받들고 · 들이마시며
   const PHASE_KNOCKS = [3, 1, 2, 1];
   const PHASE_KNOCK_VOL = [1, 0.75, 0.75, 0.75];
   const KNOCK_SPREAD = false; // true로 두면 연타를 단계 전체에 고르게 퍼뜨린다
-  function knock(v, offset){
+  function knock(v, offset, hz){
     if(soundMode==='mute') return;
     if(!ensureAudio()) return;
     try{
       const t0=audioCtx.currentTime+0.02+(offset||0);
       const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-      o.type='sine'; o.frequency.value=KNOCK_HZ;
+      o.type='sine'; o.frequency.value=hz||KNOCK_HZ;
       g.gain.setValueAtTime(0.0001,t0);
       g.gain.exponentialRampToValueAtTime(v,t0+0.008);
       g.gain.exponentialRampToValueAtTime(0.0001,t0+KNOCK_DUR);
@@ -391,7 +409,7 @@
   }
   // times>1이면 오디오 시계에 맞춰 정확한 간격으로 연타한다.
   // phaseDur를 주면 연타가 그 단계를 넘어가지 않도록 간격을 자동으로 줄인다.
-  function moktak(vol, times, phaseDur){
+  function moktak(vol, times, phaseDur, hz){
     const n=times||1, v=KNOCK_GAIN*(vol||1);
     let gap=KNOCK_GAP;
     if(n>1 && phaseDur){
@@ -399,7 +417,7 @@
       gap = KNOCK_SPREAD ? room : Math.min(KNOCK_GAP, room);
       if(gap<0.08) gap=0.08;
     }
-    for(let i=0;i<n;i++) knock(v, i*gap);
+    for(let i=0;i<n;i++) knock(v, i*gap, hz);
   }
   function click(){ knock(0.55); }   // 준비 카운트다운
   function bell(base, dur, vol){
@@ -598,6 +616,10 @@
   /* ───────── 진행 ───────── */
   const ease = t => t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
   function durOf(i){ return cycleSec*PHASES[i].ratio; }
+  function updateControls(){
+    startBtn.textContent = running ? '일시정지' : (done>0 ? '이 어 서' : '시 작');
+    resetBtn.classList.toggle('dim', done===0 && !running && elapsed===0);
+  }
   function fmt(s){
     s=Math.max(0,Math.round(s));
     return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
@@ -606,12 +628,26 @@
     const remain=(goal-done)*cycleSec;
     metaLabel.textContent = `지난 시간 ${fmt(elapsed)} · 남은 시간 약 ${fmt(remain)}`;
   }
+  // 준비 카운트다운을 숫자 자리에 크게 띄운다
+  function showPrepCount(n){
+    countLabel.classList.remove('prep');
+    void countLabel.offsetWidth;              // 애니메이션 재시작
+    countLabel.classList.add('prep');
+    countLabel.firstChild.nodeValue = String(n);
+  }
+  function clearPrepCount(){
+    countLabel.classList.remove('prep');
+    countLabel.firstChild.nodeValue = String(done);
+  }
   function updateCount(){
+    if(countLabel.classList.contains('prep')) return;   // 카운트다운 중에는 건드리지 않는다
     countLabel.firstChild.nodeValue = String(done);
     goalLabel.textContent = `/ ${goal}`;
     litBeads();
     updateMeta();
+    updateControls();
   }
+  function refreshCount(){ clearPrepCount(); updateCount(); }
 
   function enterPhase(i){
     phaseIdx=i; phaseStart=performance.now();
@@ -623,17 +659,24 @@
     aura.style.background=`radial-gradient(circle, ${p.ring}2E 0%, ${p.ring}0A 55%, transparent 72%)`;
     setTint(p.ring);
 
-    // 소리: 단계마다 정해진 횟수만큼 목탁
-    if(PHASE_KNOCKS[i]>0) moktak(PHASE_KNOCK_VOL[i], PHASE_KNOCKS[i], durOf(i));
+    // 소리: 단계마다 정해진 횟수·음높이로 목탁.
+    // 구령 모드에서도 항상 울리므로 TTS가 실패해도 박자는 유지된다.
+    if(PHASE_KNOCKS[i]>0)
+      moktak(PHASE_KNOCK_VOL[i], PHASE_KNOCKS[i], durOf(i), PHASE_KNOCK_HZ[i]);
 
-    // 9배마다 자세 팁, 그 외에는 짧은 구령
-    const nine    = (done>0 && done%9===0);
-    const bigMile = (goal===108 && (done===27||done===54||done===81));
-    if(i===0 && nine){
+    // 구간 안내(27·54·81배) > 9배 팁 > 평상시 힌트 순으로 표시한다
+    const nine = (done>0 && done%9===0);
+    if(i===0 && restNotice){
+      hint.textContent = restNotice;                   // 잠시 호흡 고르기
+      hint.classList.add('rest');
+      restNotice=null;                                 // 한 배만 강조하고 내린다
+    }else if(i===0 && nine){
+      hint.classList.remove('rest');
       hint.textContent = TIPS[tipIdx % TIPS.length];   // 팁은 화면으로만
       tipIdx++;
-      if(!bigMile) say(koCount(done));                 // 27·54·81배는 아래 안내와 겹친다
+      say(koCount(done));
     }else{
+      hint.classList.remove('rest');
       hint.textContent = p.hint;
       // 목탁이 울리는 단계(2)에서는 소리가 겹치지 않도록 살짝 늦춘다
       if(i===1||i===3) say(p.cue);
@@ -641,14 +684,21 @@
     }
   }
 
+  // 목표의 1/4·1/2·3/4 지점 — 목표가 9의 배수이므로 언제나 정수로 떨어진다
+  function quarterMark(){
+    const q=goal/4;
+    return done===Math.round(q)   ? '4분의 1'
+         : done===Math.round(q*2) ? '절반'
+         : done===Math.round(q*3) ? '4분의 3' : null;
+  }
   function completeBow(){
     done++;
     updateCount();
-    if(goal===108 && (done===27||done===54||done===81)){
+    const mark=quarterMark();
+    if(mark){
       bell(700,2.6,0.16);
-      say(done===27?'스물일곱 배, 사분의 일을 지났습니다'
-        : done===54?'쉰네 배, 절반입니다'
-        : '여든한 배, 이제 스물일곱 배 남았습니다', true);
+      restNotice = `${mark} 지점 — 잠시 호흡을 고르세요`;
+      say(`${koCount(done)}, ${mark}을 지났습니다. 잠시 호흡을 고르세요`, true);
     }else if(done%9===0){
       bell(880,1.2,0.09);
     }
@@ -689,8 +739,7 @@
     ensureAudio();
     acquireWakeLock();
     running=true;
-    startBtn.textContent='멈 춤';
-    resetBtn.classList.add('hidden');
+    updateControls();
     prepare();
   }
   function prepare(){
@@ -704,12 +753,17 @@
     arc.setAttribute('stroke-dashoffset', String(ARC));
     say(done>0 ? `${done}배부터 이어서 시작합니다` : '준비하세요', true);
     metaLabel.textContent = `${left}초 후 시작`;
+    showPrepCount(left);
     moktak(0.8);
     prepTimer=setInterval(()=>{
       left--;
-      if(left>0){ metaLabel.textContent=`${left}초 후 시작`; click(); }
-      else{
+      if(left>0){
+        metaLabel.textContent=`${left}초 후 시작`;
+        showPrepCount(left);
+        click();
+      }else{
         clearInterval(prepTimer); prepTimer=null;
+        refreshCount();
         if(!running) return;
         begin();
       }
@@ -726,10 +780,10 @@
     running=false;
     cancelAnimationFrame(raf);
     if(prepTimer){ clearInterval(prepTimer); prepTimer=null; }
+    refreshCount();
     try{ speechSynthesis.cancel(); }catch(e){}
     releaseWakeLock();
-    startBtn.textContent = done>0 ? '이 어 서' : '시 작';
-    resetBtn.classList.toggle('hidden', done===0);
+    updateControls();
     phaseLabel.textContent = msg || '잠시 쉬어갑니다';
     phaseLabel.style.color='var(--moon-dim)';
     breathLabel.textContent='';
@@ -743,19 +797,17 @@
     finishBell();
     say(`${done}배를 마쳤습니다. 천천히 호흡을 고르세요`, true);
     stop('마쳤습니다 🙏');
-    startBtn.textContent='시 작';
     metaLabel.textContent=`${done}배 · ${fmt(elapsed)} 소요`;
     if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
     restVeil.classList.add('on');
     done=0; elapsed=0;
-    resetBtn.classList.add('hidden');
+    updateControls();
   }
   function reset(){
-    done=0; elapsed=0; tipIdx=0;
+    done=0; elapsed=0; tipIdx=0; restNotice=null;
+    hint.classList.remove('rest');
     updateCount();
     stop();
-    startBtn.textContent='시 작';
-    resetBtn.classList.add('hidden');
     phaseLabel.textContent='준비되면 시작하세요';
     hint.textContent='두꺼운 방석을 무릎 아래에 두고, 미끄럽지 않은 바닥에 섭니다';
   }
@@ -773,8 +825,28 @@
   });
 
   /* ───────── 컨트롤 ───────── */
-  startBtn.addEventListener('click', ()=> running?stop():start());
-  resetBtn.addEventListener('click', reset);
+  startBtn.addEventListener('click', ()=>{ disarmReset(); running?stop():start(); });
+
+  // 리셋은 항상 보이되, 오조작 방지를 위해 두 번 눌러야 실행된다
+  let resetArmed=false, resetTimer=null;
+  function disarmReset(){
+    resetArmed=false;
+    if(resetTimer){ clearTimeout(resetTimer); resetTimer=null; }
+    resetBtn.classList.remove('warn');
+    resetBtn.textContent='↺ 처음부터';
+  }
+  resetBtn.addEventListener('click', ()=>{
+    if(done===0 && !running && elapsed===0) return;   // 되돌릴 것이 없음
+    if(!resetArmed){
+      resetArmed=true;
+      resetBtn.classList.add('warn');
+      resetBtn.textContent='정말 초기화?';
+      resetTimer=setTimeout(disarmReset, 3000);
+      return;
+    }
+    disarmReset();
+    reset();
+  });
 
   document.querySelectorAll('#goals .pill').forEach(b=>{
     b.addEventListener('click', ()=>{
@@ -782,6 +854,7 @@
       document.querySelectorAll('#goals .pill').forEach(x=>x.classList.toggle('active',x===b));
       buildBeads(goal);
       if(done>=goal){ done=0; elapsed=0; }
+      restNotice=null; hint.classList.remove('rest');
       updateCount();
     });
   });
