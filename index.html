@@ -80,15 +80,9 @@
   .breath{font-size:1rem;letter-spacing:.24em;text-indent:.24em;color:var(--text-dim);min-height:1.4rem;margin-top:2px;}
   .count{font-weight:700;font-size:5.2rem;line-height:1.1;color:var(--moon);
     font-variant-numeric:tabular-nums;min-height:5.4rem;}
-  .count.prep{color:var(--gold);animation:prepPulse .95s ease-out;}
-  .count.prep .goal{display:none;}
-  @keyframes prepPulse{0%{transform:scale(1.35);opacity:.35}55%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:1}}
   .count .goal{font-size:.34em;font-weight:500;color:var(--text-dim);letter-spacing:.06em;margin-left:.2em;}
   .meta{font-size:1rem;color:var(--text-dim);letter-spacing:.14em;min-height:1.4rem;}
 
-  .hint.rest{color:var(--gold);font-weight:700;letter-spacing:.1em;
-    animation:restGlow 2.4s ease-in-out 2;}
-  @keyframes restGlow{0%,100%{opacity:.6}50%{opacity:1;text-shadow:0 0 20px rgba(217,179,108,.7)}}
   .hint{font-size:1.02rem;color:var(--text);opacity:.85;margin:6px 0 12px;padding:0 18px;
     word-break:keep-all;max-width:34em;letter-spacing:.06em;z-index:6;text-align:center;line-height:1.7;
     min-height:3.4rem;}
@@ -279,13 +273,13 @@
       hint:'발은 모으고 손끝은 턱 높이 — 어깨의 힘을 뺍니다' },
     { name:'내려갑니다',    breath:'내쉬며',       ratio:.28, color:'var(--sky)',   ring:'#6E9CC4',
       seq:['STAND','KNEEL','PROSTRATE'], cue:'내쉬며',
-      hint:"무릎을 바닥에 '쿵' 소리가 나지 않게 살포시 내립니다" },
+      hint:'허리보다 무릎을 먼저 굽혀, 손으로 바닥을 짚으며 낮춥니다' },
     { name:'이마를 댑니다',  breath:'멈추고',       ratio:.27, color:'var(--white)', ring:'#EDE8D8',
       seq:['PROSTRATE','PALMS','PROSTRATE'], cue:'받들고',
       hint:'이마를 가만히 내려놓고, 손바닥을 뒤집어 귀 높이로 받듭니다' },
     { name:'일어섭니다',    breath:'들이마시며',   ratio:.30, color:'var(--jade)',  ring:'#7FB8A4',
       seq:['PROSTRATE','KNEEL','STAND'], cue:'들이마시며',
-      hint:'반동 대신 허벅지와 엉덩이 힘으로 천천히 밀어 올립니다' }
+      hint:'반동 대신 허벅지와 엉덩이 힘으로 밀어 올립니다' }
   ];
 
   const TIPS = [
@@ -321,7 +315,6 @@
   const ARC = 257.6;
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  let restNotice=null;
   let goal=108, cycleSec=14, done=0, running=false, prepTimer=null,
       phaseIdx=0, phaseStart=0, raf=null, startedAt=0, elapsed=0,
       soundMode='voice',           // voice | moktak | mute
@@ -628,26 +621,13 @@
     const remain=(goal-done)*cycleSec;
     metaLabel.textContent = `지난 시간 ${fmt(elapsed)} · 남은 시간 약 ${fmt(remain)}`;
   }
-  // 준비 카운트다운을 숫자 자리에 크게 띄운다
-  function showPrepCount(n){
-    countLabel.classList.remove('prep');
-    void countLabel.offsetWidth;              // 애니메이션 재시작
-    countLabel.classList.add('prep');
-    countLabel.firstChild.nodeValue = String(n);
-  }
-  function clearPrepCount(){
-    countLabel.classList.remove('prep');
-    countLabel.firstChild.nodeValue = String(done);
-  }
   function updateCount(){
-    if(countLabel.classList.contains('prep')) return;   // 카운트다운 중에는 건드리지 않는다
     countLabel.firstChild.nodeValue = String(done);
     goalLabel.textContent = `/ ${goal}`;
     litBeads();
     updateMeta();
     updateControls();
   }
-  function refreshCount(){ clearPrepCount(); updateCount(); }
 
   function enterPhase(i){
     phaseIdx=i; phaseStart=performance.now();
@@ -664,19 +644,14 @@
     if(PHASE_KNOCKS[i]>0)
       moktak(PHASE_KNOCK_VOL[i], PHASE_KNOCKS[i], durOf(i), PHASE_KNOCK_HZ[i]);
 
-    // 구간 안내(27·54·81배) > 9배 팁 > 평상시 힌트 순으로 표시한다
-    const nine = (done>0 && done%9===0);
-    if(i===0 && restNotice){
-      hint.textContent = restNotice;                   // 잠시 호흡 고르기
-      hint.classList.add('rest');
-      restNotice=null;                                 // 한 배만 강조하고 내린다
-    }else if(i===0 && nine){
-      hint.classList.remove('rest');
+    // 9배마다 자세 팁, 그 외에는 짧은 구령
+    const nine    = (done>0 && done%9===0);
+    const bigMile = (goal===108 && (done===27||done===54||done===81));
+    if(i===0 && nine){
       hint.textContent = TIPS[tipIdx % TIPS.length];   // 팁은 화면으로만
       tipIdx++;
-      say(koCount(done));
+      if(!bigMile) say(koCount(done));                 // 27·54·81배는 아래 안내와 겹친다
     }else{
-      hint.classList.remove('rest');
       hint.textContent = p.hint;
       // 목탁이 울리는 단계(2)에서는 소리가 겹치지 않도록 살짝 늦춘다
       if(i===1||i===3) say(p.cue);
@@ -684,21 +659,14 @@
     }
   }
 
-  // 목표의 1/4·1/2·3/4 지점 — 목표가 9의 배수이므로 언제나 정수로 떨어진다
-  function quarterMark(){
-    const q=goal/4;
-    return done===Math.round(q)   ? '4분의 1'
-         : done===Math.round(q*2) ? '절반'
-         : done===Math.round(q*3) ? '4분의 3' : null;
-  }
   function completeBow(){
     done++;
     updateCount();
-    const mark=quarterMark();
-    if(mark){
+    if(goal===108 && (done===27||done===54||done===81)){
       bell(700,2.6,0.16);
-      restNotice = `${mark} 지점 — 잠시 호흡을 고르세요`;
-      say(`${koCount(done)}, ${mark}을 지났습니다. 잠시 호흡을 고르세요`, true);
+      say(done===27?'스물일곱 배, 사분의 일을 지났습니다'
+        : done===54?'쉰네 배, 절반입니다'
+        : '여든한 배, 이제 스물일곱 배 남았습니다', true);
     }else if(done%9===0){
       bell(880,1.2,0.09);
     }
@@ -753,17 +721,12 @@
     arc.setAttribute('stroke-dashoffset', String(ARC));
     say(done>0 ? `${done}배부터 이어서 시작합니다` : '준비하세요', true);
     metaLabel.textContent = `${left}초 후 시작`;
-    showPrepCount(left);
     moktak(0.8);
     prepTimer=setInterval(()=>{
       left--;
-      if(left>0){
-        metaLabel.textContent=`${left}초 후 시작`;
-        showPrepCount(left);
-        click();
-      }else{
+      if(left>0){ metaLabel.textContent=`${left}초 후 시작`; click(); }
+      else{
         clearInterval(prepTimer); prepTimer=null;
-        refreshCount();
         if(!running) return;
         begin();
       }
@@ -780,7 +743,6 @@
     running=false;
     cancelAnimationFrame(raf);
     if(prepTimer){ clearInterval(prepTimer); prepTimer=null; }
-    refreshCount();
     try{ speechSynthesis.cancel(); }catch(e){}
     releaseWakeLock();
     updateControls();
@@ -804,8 +766,7 @@
     updateControls();
   }
   function reset(){
-    done=0; elapsed=0; tipIdx=0; restNotice=null;
-    hint.classList.remove('rest');
+    done=0; elapsed=0; tipIdx=0;
     updateCount();
     stop();
     phaseLabel.textContent='준비되면 시작하세요';
@@ -854,7 +815,6 @@
       document.querySelectorAll('#goals .pill').forEach(x=>x.classList.toggle('active',x===b));
       buildBeads(goal);
       if(done>=goal){ done=0; elapsed=0; }
-      restNotice=null; hint.classList.remove('rest');
       updateCount();
     });
   });
